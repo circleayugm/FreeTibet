@@ -20,9 +20,20 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-public class ModeManager : MonoBehaviour {
+public class ModeManager : MonoBehaviour
+{
+
+    // --- シングルトン化 ---
+    public static ModeManager Instance;
+    void Awake() { Instance = this; }
+
+    [Header("Views")]
+    [SerializeField] GameObject PANEL_INITIALIZE;
+    [SerializeField] GameObject PANEL_DEMO;
+	[SerializeField] GameObject PANEL_GAME;
+    
 	// モード
-	public enum MODE
+    public enum MODE
 	{
 		//INITIALIZE = 0,
 		INITIALIZE=0,
@@ -31,40 +42,53 @@ public class ModeManager : MonoBehaviour {
 		//GAME_PAUSE,
 		MAX
 	};
-	static readonly string[] MODE_SCENE = new string[]
-	{
-		//"00_initialize",
-		"00_init",
+	// ModeManager.cs 内
+	public static readonly string[] MODE_SCENE = new string[] // ← publicが必要
+    {
+		"00_initialize",
 		"01_demo",
-		"02_game",
-		//"04_MainGame",
+		"02_game",	
 		"SCENE_MAX"
 	};
 
-	public static MODE mode = MODE.INITIALIZE;	// 現在のモード
 
-	// モードチェンジ関数
-	public static MODE ChangeMode(MODE newmode)
+    public static MODE mode = MODE.INITIALIZE;  // 現在のモード
+
+    // 表示の更新（Instance経由で本物を操作する）
+    public static void RefreshView(MODE targetMode)
+    {
+        if (Instance == null) return;
+
+        //Instance.PANEL_INITIALIZE.SetActive(targetMode == MODE.INITIALIZE);
+        //Instance.PANEL_DEMO.SetActive(targetMode == MODE.DEMO);
+        //Instance.PANEL_GAME.SetActive(targetMode == MODE.GAME);
+        switch (targetMode)
+        {
+            case MODE.INITIALIZE:
+                Instance.PANEL_INITIALIZE.SetActive(true);
+                break;
+            case MODE.DEMO:
+                Instance.PANEL_DEMO.SetActive(true);
+                break;
+            case MODE.GAME:
+                Instance.PANEL_GAME.SetActive(true);
+                break;
+        }
+    }
+
+
+
+    // モードチェンジ関数
+    public static MODE ChangeMode(MODE newmode)
 	{
 		if (mode != newmode)
 		{
-#if false
-			if ((mode == MODE.GAME_PLAY) && (newmode == MODE.GAME_PAUSE))
 			{
-				// ポーズ音・ポーズ処理
-				mode = newmode;
-			}
-			else if ((mode == MODE.GAME_PAUSE) && (newmode == MODE.GAME_PLAY))
-			{
-				// ポーズ解除音・ポーズ解除処理
-				mode = newmode;
-			}
-			else 
-#endif
-			{
-				mode = newmode;
-				SceneManager.LoadScene(MODE_SCENE[(int)newmode]);
-			}
+                mode = newmode;
+				RefreshView(newmode);
+                // SceneManager.LoadScene は使わない！
+                Debug.Log($"モードが {newmode} に切り替わりました");
+            }
 		}
 		return mode;
 	}

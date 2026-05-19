@@ -27,7 +27,7 @@ public class FileOutput : MonoBehaviour {
 	const bool sw_debuglog = false;							//Debug.Logにも出力するか(true=出力する・false=出力しない).
 
 	//定義時変更の必要な変数.
-	static string ApplicationName = "TempShooter";					//アプリケーション識別名.
+	static string ApplicationName = "FreeTibet";					//アプリケーション識別名.
 	static string outputFileName = "DebugLog.utf8.txt";		//ファイルネーム.
 	string ApplicationNewFileMessage = "新規作成されました。";		//ファイルが作成された(作り直された)際のメッセージ.
 

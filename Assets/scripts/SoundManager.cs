@@ -82,18 +82,21 @@ public class SoundManager : MonoBehaviour
 			BGMsource = gameObject.AddComponent<AudioSource>();
 			// BGMはループを有効にする.
 			BGMsource.loop = true;
+			BGMsource.timeSamples = 4410;
 
 			// SE AudioSource.
 			for (int i = 0; i < SEsources.Length; i++)
 			{
 				SEsources[i] = gameObject.AddComponent<AudioSource>();
-			}
+				SEsources[i].timeSamples = 4410;
+            }
 
 			// 音声 AudioSource.
 			for (int i = 0; i < VoiceSources.Length; i++)
 			{
 				VoiceSources[i] = gameObject.AddComponent<AudioSource>();
-			}
+				VoiceSources[i].timeSamples = 4410;
+            }
 
 			/*	システム系のオブジェクトをまとめて「System」に置いていた頃の名残.
 			GameObject init = GameObject.Find("InitMain");
@@ -190,6 +193,7 @@ public class SoundManager : MonoBehaviour
 		BGMsource.Stop();
 		BGMsource.clip = BGM[index];
 		BGMsource.Play();
+		BGMsource.PlayDelayed(0.00001f);
 	}
 	
 	// BGM停止.
@@ -238,6 +242,7 @@ public class SoundManager : MonoBehaviour
 			if( false == source.isPlaying ){
 				source.clip = SE[index];
 				source.Play();
+				source.PlayDelayed(0.00001f);
 				return;
 			}
 		}  

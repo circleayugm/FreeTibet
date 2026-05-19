@@ -4,7 +4,7 @@ using System.Linq;
 
 public class KanjiConverter
 {
-	static readonly string[] KanjiDigits = { "Z", "ˆê", "“ñ", "O", "l", "ŒÜ", "˜Z", "µ", "”ª", "‹ã" };
+	static readonly string[] KanjiDigits = { "Z", "ˆê", "“ñ", "O", "l", "ŒÜ", "˜Z", "µ", "”ª", "‹ã", "–œ", "‰­", "l", "–¯", "å", "‰»" };
 
 	public static string ToFormattedKanji(long number)
 	{

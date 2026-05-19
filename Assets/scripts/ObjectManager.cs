@@ -37,21 +37,15 @@ public sealed class ObjectManager : MonoBehaviour {
 	public Sprite[] SPR_MYSHOT;
 	[Space]
 	[SerializeField]
-	public GameObject OBJ_FIELD;
-	[SerializeField]
-	public GameObject OBJ_MYSHOT;
-	[SerializeField]
-	public GameObject OBJ_MYSHIP;
-	[SerializeField]
-	public GameObject OBJ_ENEMY01;
-	[Space]
-	[SerializeField]
 	public ObjectCtrl PREFAB_OBJECT;    // キャラクタオブジェクトのprefab.
 	[Space]
 	//[SerializeField]
 	//public CameraCtrl CAMERA_ROOT;
+	[SerializeField]
+    public bool SW_BOOT = false;        // 動作準備が整った時true
 
-	public static readonly int LIMIT = 50;             // キャラクタ表示総数.
+
+    public static readonly int LIMIT = 100;             // キャラクタ表示総数.
 
 	public enum MODE    // 処理モード.
 	{
@@ -68,11 +62,19 @@ public sealed class ObjectManager : MonoBehaviour {
 		MYSHIP = 1,			// 自機.
 		//MYSHOT = 2,			// 自機ショット
 		//FLOOR = 3,		    // 床・すべての物体は床に乗る
-		ENEMY01 = 4,		// 敵
+		TANK = 4,			// 敵
 		//ITEM,				// アイテム
 		//WALL,				// 壁
 		NOHIT_EFFECT,		// 爆風
 	}
+	public enum MovementMode
+	{
+		PreciseStep,     // 現在の方式（慎重なチェックポイント型）
+		FroggerSnap,     // 一気にジャンプ方式（フロッガー型）
+		FreeRun          // フレーム移動 or スライド型（保留でもOK）
+	}
+
+	public VerticalMover VerticalStopPoint = new VerticalMover(new float[] { -220, -220, -160, -110, -60, -10, 40, 100 });
 
 	public readonly Vector3 OBJECT_DISPLAY_LIMIT = new Vector3((272 * 3) / 2, (480 * 3) / 2, 0);
 	public readonly Vector3 OBJECT_BULLET_LIMIT = new Vector3(272 / 2, 480 / 2, 0);
@@ -83,7 +85,6 @@ public sealed class ObjectManager : MonoBehaviour {
 	public int objectStockMax = LIMIT;
 	public int objectUsedMax = 0;
 
-	public bool SW_BOOT = false;        // 動作準備が整った時true
 
 	float[] ang256 = new float[256];
 
@@ -91,57 +92,100 @@ public sealed class ObjectManager : MonoBehaviour {
 
 	public Vector3 pos_myship;
 
-	void Start()
+    private void Awake()
+    {
+		SW_BOOT = false;
+		Debug.Log($"ObjectManager: Awake - SW_BOOT = {SW_BOOT}");
+    }
+    void Start()
 	{
-		Debug.Log("★★★★★ObjectManager:Start");
+		//Debug.Log("★★★★★ObjectManager:Start");
 		//if (ModeManager.now_mode != ModeManager.MODE.GAME_PLAY)
 		{
 			//return;
 		}
-		objectStock.Clear();
-		objectStockMax = 0;
-		objectUsed.Clear();
-		objectUsedMax = 0;
-		for (int i = 0; i < ang256.Length; i++)
-		{
-			ang256[i] = (90-(360.0f / 256.0f) * i);
-		}
-		Debug.Log("オブジェクト自薦生成部分");
-		for (int i = 0; i < LIMIT; i++)
-		{
-			ObjectCtrl obj = new ObjectCtrl();
-			Debug.Log("　→Generateに投げる直前：i=" + i);
-			obj = Generate(TYPE.NOUSE, new Vector3(0, -10000, 0), 0, 0);
-			obj.OBJcnt = i;
-			objectStock.Add(obj);
-			objectStockMax++;
-			Debug.Log("　→最低限の初期化完了：i=" + i);
-		}
+	}
 
+    // Updateは空にするか消してOK
+    //void Update() { }
 
-		SW_BOOT = true;
+    // MainSceneCtrlから呼ばれる初期化
+    // --- BootManagerを「完全1回限定」にする ---
+    public void Boot_ObjectManager_Generate()
+    {
+		Debug.Log($"ObjectManager: BootManager called - SW_BOOT = {SW_BOOT}, objectStock.Count = {objectStock.Count}");
+		// すでに生成済みなら、二度手間を防ぐために即座に抜ける
+		if (SW_BOOT || objectStock.Count > 0)
+		{
+			Debug.Log("<color=yellow>ObjectManager: すでに生成済みのため、BootManagerをスキップします。</color>");
+			return;
+		}
+		Debug.Log($"<color=cyan>ObjectManager: オブジェクトの生成を開始します...</color>");
+        for (int i = 0; i < LIMIT; i++)
+        {
+            // 直接 Instantiate し、基本設定を済ませる
+            ObjectCtrl obj = Instantiate(PREFAB_OBJECT, new Vector3(0, -10000, 0), Quaternion.identity);
+            obj.transform.SetParent(OBJ_ROOT);
+            obj.OBJcnt = i;
+			obj.MainPic.enabled = false;
+			obj.MainPic.sprite = null;
+			obj.scale = new Vector3(0.15f, 0.15f, 1);
+            // 最初は全員「お休み」状態
+            obj.gameObject.SetActive(false);
+            obj.obj_type = TYPE.NOUSE;
+            obj.obj_mode = MODE.NOUSE;
+
+            objectStock.Add(obj);
+        }
+        Debug.Log("<color=cyan>ObjectManager: 100個の生成が完了しました！</color>");
+
+        objectStockMax = objectStock.Count;
+        // ↓ これが抜けているか、その手前でエラーが出ていると無限ループします
+        SW_BOOT = true;
+        Debug.Log("準備完了フラグを立てました！");
 	}
 #if false
-	private void Start()
+
+	private void Update()
 	{
-		CameraCtrl cameraCtrl = GameObject.Find("Camera").GetComponent<CameraCtrl>();
-		CAMERA_ROOT = cameraCtrl;
-	}
+		if (SW_BOOT == true)
+		{
+			return;
+		}
+        objectStock.Clear();
+        objectStockMax = 0;
+        objectUsed.Clear();
+        objectUsedMax = 0;
+        for (int i = 0; i < ang256.Length; i++)
+        {
+            ang256[i] = (90 - (360.0f / 256.0f) * i);
+        }
+        //Debug.Log("オブジェクト自薦生成部分");
+        for (int i = 0; i < LIMIT; i++)
+        {
+            ObjectCtrl obj = Generate(TYPE.NOUSE, new Vector3(0, -10000, 0), 0, 0);
+            obj.OBJcnt = i;
+            objectStock.Add(obj);
+            objectStockMax++;
+            //Debug.Log("　→最低限の初期化完了：i=" + i);
+        }
+        SW_BOOT = true;
+    }
 #endif
 
 
 
+    /// <summary>
+    ///		初期設定；オブジェクトの前準備
+    /// </summary>
+    /// <param name="type">オブジェクトタイプ</param>
+    /// <param name="pos">座標</param>
+    /// <param name="angle">角度</param>
+    /// <param name="speed">速度</param>
+    /// <returns>前準備と設置が終わったオブジェクト</returns>
+#if false
 
-
-	/// <summary>
-	///		初期設定；オブジェクトの前準備
-	/// </summary>
-	/// <param name="type">オブジェクトタイプ</param>
-	/// <param name="pos">座標</param>
-	/// <param name="angle">角度</param>
-	/// <param name="speed">速度</param>
-	/// <returns>前準備と設置が終わったオブジェクト</returns>
-	public ObjectCtrl Generate(TYPE type, Vector3 pos, int angle, int speed)
+    public ObjectCtrl Generate(TYPE type, Vector3 pos, int angle, int speed)
 	{
 		ObjectCtrl obj = new ObjectCtrl();
 		obj = ObjectCtrl.Instantiate(PREFAB_OBJECT, pos, Quaternion.identity);
@@ -154,9 +198,10 @@ public sealed class ObjectManager : MonoBehaviour {
 		obj.gameObject.SetActive(false);
 		obj.MainHit.enabled = false;
 		obj.DisplayOff();
-		return obj;
+		Debug.Log($"ObjectManager.Generate:オブジェクト生成:総数={objectStock.Count}");
+        return obj;
 	}
-
+#endif
 
 
 	/// <summary>
@@ -166,11 +211,11 @@ public sealed class ObjectManager : MonoBehaviour {
 	/// <param name="group_id"></param>
 	/// <param name="local_mode"></param>
 	/// <param name="pos"></param>
-	/// <param name="EulerAngle"></param>
+	/// <param name="scale"></param>
 	/// <param name="angle"></param>
 	/// <param name="speed"></param>
 	/// <returns></returns>
-	public ObjectCtrl Set(TYPE type, int group_id,int local_mode,Vector3 pos, Vector3 EulerAngle,int angle, int speed)
+	public ObjectCtrl Set(int type, int group_id,int local_mode,Vector3 pos, Vector3 scale,int angle, int speed)
 	{
 		if (objectStock.Count == 0)
 		{
@@ -186,16 +231,16 @@ public sealed class ObjectManager : MonoBehaviour {
 
 
 		//obj.MainModel = OBJ_ENEMY01;
-		obj.local_mode = local_mode;            // オブジェクト設定.
+		obj.local_mode = (int)local_mode;            // オブジェクト設定.
 		obj.local_type = 0;
 		obj.group_id = group_id;
 		obj.angle = angle;
 		obj.speed = speed;
 		obj.LIFE = 1;
-		obj.obj_mode = MODE.INIT;
-		obj.obj_type = type;
+        obj.obj_mode = MODE.INIT;
+		obj.obj_type = (TYPE)type;
 		obj.MainPic.sortingOrder = 0;
-		obj.target = new Vector3(0, 0, 0);
+		obj.scale = scale;
 
 		//InitializeNowFloor(obj.Now_floor,EulerAngle);
 		//obj.Now_floor.playerOnFloor = 0;
@@ -247,12 +292,10 @@ public sealed class ObjectManager : MonoBehaviour {
 		objectUsed.Remove(obj);
 		objectUsedMax--;
 		obj.MainPic.enabled = false;
-		obj.MainPic.sprite = null;
-		//obj.MainModel.SetActive(false);
-		//obj.MainModel = null;
-		//obj.MainHit.enabled = false;
-		//obj.MainPos.localPosition = new Vector3(-1000, 0, 0);
-		obj.transform.SetParent(OBJ_ROOT);
+		obj.MainHit.enabled = false;
+		obj.transform.localPosition = new Vector3(0, -10000, 0);    // 使い終わったら見えない場所に移動しておく
+		obj.MainPic.sprite = null;									// 画像も消しておく
+        obj.transform.SetParent(OBJ_ROOT);
 		obj.obj_mode = MODE.NOUSE;
 		obj.obj_type = TYPE.NOUSE;
 		obj.enabled = false;
@@ -279,7 +322,8 @@ public sealed class ObjectManager : MonoBehaviour {
 			obj.DisplayOff();
 			obj.enabled = false;
 			obj.transform.SetParent(OBJ_ROOT);
-			objectStock.Add(obj);
+			obj.transform.localPosition = new Vector3(0, -10000, 0);	// 画面外に移動しておく
+            objectStock.Add(obj);
 			objectStockMax = objectStock.Count;
 			objectUsedMax = 0;
 		}
@@ -309,35 +353,6 @@ public sealed class ObjectManager : MonoBehaviour {
 
 
 
-	// ObjectManagerクラス内
-	public void InitializeNowFloor(FloorInteraction floor, Vector3 eulerAngles)
-	{
-		floor.Position = Vector3.zero;
-		floor.EulerAngles = eulerAngles;
-
-		Quaternion rotation = Quaternion.Euler(eulerAngles);
-		floor.FloorNormal = (rotation * Vector3.up).normalized;
-		floor.SlopeDirection = (rotation * Vector3.forward).normalized;
-
-		floor.floorTransform.rotation = rotation; // ★ 実際のTransformにも適用
-
-		//FileOutput.Log($"Initialized Floor: Normal={floor.FloorNormal}, Euler={floor.EulerAngles}, Rotation={floor.floorTransform.rotation.eulerAngles}");
-	}
-
-
-
-
-	// 自機・敵機をrootに戻す(フロア全塗りクリアの時にフロアに乗ったままオブジェクト返済するのを防ぐ)
-	public void MoveAllObjectsToRootFloor()
-	{
-		foreach (ObjectCtrl obj in objectUsed)
-		{
-			if (obj.obj_type == ObjectManager.TYPE.MYSHIP || obj.obj_type == ObjectManager.TYPE.ENEMY01)
-			{
-				obj.transform.SetParent(OBJ_ROOT.transform);
-			}
-		}
-	}
 
 
 
