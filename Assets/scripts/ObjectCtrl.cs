@@ -57,8 +57,8 @@ public class ObjectCtrl : MonoBehaviour
 	public Transform MainPos;           // 座標・回転関連.
 	[SerializeField]
 	public BoxCollider2D MainHit;   // 当たり判定.
-	//[SerializeField]
-	//public SpriteRenderer EmotePic;     // エモートアイコン
+									//[SerializeField]
+									//public SpriteRenderer EmotePic;     // エモートアイコン
 	[Space]
 
 	public ObjectManager.MovementMode currentMode = ObjectManager.MovementMode.PreciseStep; // 移動サブルーチン3種類から選べるようにする
@@ -70,12 +70,12 @@ public class ObjectCtrl : MonoBehaviour
 	public bool NOHIT = false;  // 当たり判定の有無.
 	[Space]
 	public Vector3 scale = new Vector3(0.15f, 0.15f, 1);   // キャラクタの大きさ(スケール)・初期値は自機に合わせてある.
-    public int speed = 0;                       // 移動速度.
+	public int speed = 0;                       // 移動速度.
 	public int angle = 0;                       // 移動角度(360度を256段階で指定).
 	public int oldangle = 0;                    // 1int前の角度
 	public int group_id = 0;                    // グループID(数字が違う相手と当たり判定を取るためのもの)
-	public int local_type = 0;					// キャラクタタイプ(同じキャラクタだけど動きが違うなどの振り分け).
-	public int local_mode = 0;					// 動作モード(キャラクタによって意味が違う).
+	public int local_type = 0;                  // キャラクタタイプ(同じキャラクタだけど動きが違うなどの振り分け).
+	public int local_mode = 0;                  // 動作モード(キャラクタによって意味が違う).
 	public int power = 0;                       // 相手に与えるダメージ量.
 	public int count = 0;                       // 動作カウンタ.
 	public int[] flags = new int[4];            // パラメータ4個
@@ -86,7 +86,7 @@ public class ObjectCtrl : MonoBehaviour
 	public int ship_energy_charge = 0;
 
 	private int fadeStep = 0;  // フェード段階カウント
-	private bool isGoalSequence = false;		// trueならゴール演出中
+	private bool isGoalSequence = false;        // trueならゴール演出中
 
 	[Space]
 
@@ -135,8 +135,8 @@ public class ObjectCtrl : MonoBehaviour
 
 
 
-// Use this for initialization
-void Start()
+	// Use this for initialization
+	void Start()
 	{
 		for (int i = 0; i < flags.Length; i++)
 		{
@@ -171,188 +171,231 @@ void Start()
 	}
 #endif
 
-    // Update is called once per frame
-    void Update()
-    {
-        if (obj_mode == ObjectManager.MODE.NOUSE)
-        {
-            return;
-        }
+	// Update is called once per frame
+	void Update()
+	{
+		if (obj_mode == ObjectManager.MODE.NOUSE)
+		{
+			return;
+		}
 
-        // ★ゲームオーバー演出中のEarly Returnは、count++を殺さないように
-        // 各オブジェクトの挙動（通常移動）の直前で弾くように修正します。
+		// ★ゲームオーバー演出中のEarly Returnは、count++を殺さないように
+		// 各オブジェクトの挙動（通常移動）の直前で弾くように修正します。
 
-        if (ModeManager.mode == ModeManager.MODE.DEMO)
-        {
-            return;
-        }
+		if (ModeManager.mode == ModeManager.MODE.DEMO)
+		{
+			return;
+		}
 
-        switch (obj_mode)
-        {
-            case ObjectManager.MODE.NOUSE:
-                return;
-            case ObjectManager.MODE.INIT:
-                count = 0;
-                LIFE = 1;
-                obj_mode = ObjectManager.MODE.NOHIT;
-                break;
-            case ObjectManager.MODE.HIT:
-                MainHit.enabled = true;
-                break;
-            case ObjectManager.MODE.NOHIT:
-                MainHit.enabled = false;
-                break;
-            case ObjectManager.MODE.FINISH:
-                MANAGE.Return(this);
-                return; // 返却したならこれ以上処理しない
-        }
+		switch (obj_mode)
+		{
+			case ObjectManager.MODE.NOUSE:
+				return;
+			case ObjectManager.MODE.INIT:
+				count = 0;
+				LIFE = 1;
+				obj_mode = ObjectManager.MODE.NOHIT;
+				break;
+			case ObjectManager.MODE.HIT:
+				MainHit.enabled = true;
+				break;
+			case ObjectManager.MODE.NOHIT:
+				MainHit.enabled = false;
+				break;
+			case ObjectManager.MODE.FINISH:
+				MANAGE.Return(this);
+				return; // 返却したならこれ以上処理しない
+		}
 
-        // ★キレイに整理した運命の switch 文
-        switch (obj_type)
-        {
-            // ==========================================
-            // 自機（MYSHIP）の処理
-            // ==========================================
-            case ObjectManager.TYPE.MYSHIP:
-                {
-                    switch (count)
-                    {
-                        case 0: // --- 初期化 ---
-                            obj_mode = ObjectManager.MODE.HIT;
-                            NOHIT = false;
-                            MainHit.offset = new Vector2(0, -350);
-                            MainHit.size = new Vector3(300, 30, 1);
-                            MainHit.enabled = true;
-                            MainPic.sprite = MANAGE.SPR_MYSHIP[0];
-                            MainPic.enabled = true;
-                            MainPic.color = new Color(1, 1, 1, 1);
-                            angle = 0;
-                            flags[0] = 0;
-                            flags[1] = 0;
-                            flags[2] = 0;
-                            flags[3] = 0;
-                            local_mode = 0;
-                            power = 1;
-                            LIFE = 1;
-                            this.transform.localPosition = new Vector3(0, -220, 0);
-                            this.transform.localScale = new Vector3(0.15f, 0.15f, 1);
-                            break;
+		// ★キレイに整理した運命の switch 文
+		switch (obj_type)
+		{
+			// ==========================================
+			// 自機（MYSHIP）の処理
+			// ==========================================
+			case ObjectManager.TYPE.MYSHIP:
+				{
+					switch (count)
+					{
+						case 0: // --- 初期化 ---
+							obj_mode = ObjectManager.MODE.HIT;
+							NOHIT = false;
+							MainHit.offset = new Vector2(0, -350);
+							MainHit.size = new Vector3(300, 30, 1);
+							MainHit.enabled = true;
+							MainPic.sprite = MANAGE.SPR_MYSHIP[0];
+							MainPic.enabled = true;
+							MainPic.color = new Color(1, 1, 1, 1);
+							angle = 0;
+							flags[0] = 0;
+							flags[1] = 0;
+							flags[2] = 0;
+							flags[3] = 0;
+							local_mode = 0;
+							power = 1;
+							LIFE = 1;
+							this.transform.localPosition = new Vector3(0, -220, 0);
+							this.transform.localScale = new Vector3(0.15f, 0.15f, 1);
+							break;
 
-                        default: // --- 通常更新 ---
-                                 // 【ゲームオーバー演出ガード】
-                            if (MAIN.cnt_game_over >= 0)	// ゲームオーバーカウンターが0以上
-                            {
-                                if (MAIN.cnt_game_over % 4 == 0)	// 0,1,2,3,0,1... 4フレームごと
-                                {
-                                    MainPic.enabled = !MainPic.enabled;	// 表示反転
-                                }
-                                DebugStation.SetText($"\n<color=red>GAME OVER:　MAIN.cnt_game_over={MAIN.cnt_game_over}</color>", false);
-                                return;	// ゲームオーバーフラグの立っている時は移動させない
-                            }
+						default: // --- 通常更新 ---
+							{
+								if (MAIN.cnt_game_over >= 0)    // ゲームオーバーカウンターが0以上
+								{
+									if (MAIN.cnt_game_over % 4 == 0)    // 0,1,2,3,0,1... 4フレームごと
+									{
+										MainPic.enabled = !MainPic.enabled; // 表示反転
+									}
+									DebugStation.SetText($"\n<color=red>GAME OVER:　MAIN.cnt_game_over={MAIN.cnt_game_over}</color>", false);
+									return; // ゲームオーバーフラグの立っている時は移動させない
+								}
 
-                            // ゴール到達チェック
-                            if (!isGoalSequence && this.transform.localPosition.y >= 100)
-                            {
-                                isGoalSequence = true;
-                                fadeStep = 0;
-								flags[3] = 1;	// ゴールフラグ(これが1の間はゴール演出中)
-                                SoundManager.Instance.StopSE();
-                                SoundManager.Instance.PlaySE(2);
-                                this.transform.localPosition = new Vector3(0, 100, 0);
-                            }
+								// ゴール到達チェック
+								if (!isGoalSequence && this.transform.localPosition.y >= 100)
+								{
+									isGoalSequence = true;
+									fadeStep = 0;
+									flags[3] = 1;   // ゴールフラグ(これが1の間はゴール演出中)
+									SoundManager.Instance.StopSE();
+									SoundManager.Instance.PlaySE(2);
+									this.transform.localPosition = new Vector3(0, 100, 0);
+								}
 
-                            // ゴール演出進行中
-                            if (isGoalSequence)
-                            {
-                                if (fadeStep <= 60)
-                                {
-                                    float alpha = 1.0f - (fadeStep / 60f);
-                                    MainPic.color = new Color(1, 1, 1, alpha);
-                                    fadeStep++;
-									return;    // 演出中はこれ以上の処理をしない（入力も受け付けない）
-                                }
-                                else
-                                {
-                                    MAIN.cnt_score++;
-                                    isGoalSequence = false;
-                                    fadeStep = 0;
-                                    MainPic.color = new Color(1, 1, 1, 1);
-                                    this.transform.localPosition = new Vector3(0, -220, 0);
-									flags[3] = 0;	// ゴールフラグリセット
-                                }
-                                flags[0] = 0;
-                                flags[1] = 0;
+								// ゴール演出進行中
+								if (isGoalSequence)
+								{
+									if (fadeStep <= 60)
+									{
+										float alpha = 1.0f - (fadeStep / 60f);
+										MainPic.color = new Color(1, 1, 1, alpha);
+										fadeStep++;
+										return;    // 演出中はこれ以上の処理をしない（入力も受け付けない）
+									}
+									else
+									{
+										MAIN.cnt_score++;
+										isGoalSequence = false;
+										fadeStep = 0;
+										MainPic.color = new Color(1, 1, 1, 1);
+										this.transform.localPosition = new Vector3(0, -220, 0);
+										flags[3] = 0;   // ゴールフラグリセット
+									}
+									flags[0] = 0;
+									flags[1] = 0;
 
-								return;	// 演出中はこれ以上の処理をしない（入力も受け付けない）
-                                break;
-                            }
+									return; // 演出中はこれ以上の処理をしない（入力も受け付けない）
+									break;
+								}
+							}
+							// 入力とモード切り替え
+							if (Input.GetKeyDown(KeyCode.Alpha1)) currentMode = ObjectManager.MovementMode.PreciseStep;
+							if (Input.GetKeyDown(KeyCode.Alpha2)) currentMode = ObjectManager.MovementMode.FroggerSnap;
+							if (Input.GetKeyDown(KeyCode.Alpha3)) currentMode = ObjectManager.MovementMode.FreeRun;
 
-                            // 入力とモード切り替え
-                            if (Input.GetKeyDown(KeyCode.Alpha1)) currentMode = ObjectManager.MovementMode.PreciseStep;
-                            if (Input.GetKeyDown(KeyCode.Alpha2)) currentMode = ObjectManager.MovementMode.FroggerSnap;
-                            if (Input.GetKeyDown(KeyCode.Alpha3)) currentMode = ObjectManager.MovementMode.FreeRun;
-
-                            float input = Input.GetAxisRaw("Vertical");
-                            int sign = (input > 0.4f) ? 1 : (input < -0.4f) ? -1 : 0;
+							float input = Input.GetAxisRaw("Vertical");
+							int sign = (input > 0.4f) ? 1 : (input < -0.4f) ? -1 : 0;   // 入力から進行方向を作成
+							if (Mathf.Abs(sign) == 0) positions[0].x = 0;	// 入力がないときはsign=0にして、FroggerSnapモードの移動完了後の入力待ち状態を作るためのフラグもリセット
+                            if (positions[0].x >= 0.1f) sign = 0;			// FroggerSnapモードで移動完了後、次の入力があるまで動けないようにするフラグをチェックして、必要なら入力を無効化
 
                             // 移動ロジック
                             switch (currentMode)
-                            {
-                                case ObjectManager.MovementMode.PreciseStep:
-                                    if (flags[1] == 0 && sign != 0)
+							{
+								case ObjectManager.MovementMode.PreciseStep:	// 仕切りアリ・押しっぱなしで移動し続ける
+									{
+										if (flags[1] == 0 && sign != 0)
+										{
+											if (this.transform.localPosition.y <= -220f && sign < 0) break;
+
+											float? nextY = MANAGE.VerticalStopPoint.GetNextTargetY(transform.localPosition.y, sign);
+											if (nextY != null)
+											{
+												positions[1] = new Vector3(0, nextY.Value, 0);
+												flags[0] = sign;
+												flags[1] = 1;
+											}
+										}
+										if (flags[1] == 1)
+										{
+											float speed = 8.0f * flags[0];
+											Vector3 nextPos = transform.localPosition + new Vector3(0, speed, 0);
+
+											if ((flags[0] > 0 && nextPos.y >= positions[1].y) ||
+												(flags[0] < 0 && nextPos.y <= positions[1].y))
+											{
+												this.transform.localPosition = new Vector3(0, positions[1].y, 0);
+												flags[1] = 0;
+												SoundManager.Instance.PlaySE(0);
+											}
+											else
+											{
+												this.transform.localPosition = nextPos;
+											}
+										}
+									}
+									break;
+
+								case ObjectManager.MovementMode.FroggerSnap:    // 仕切りアリ・押したら一度離さないと再移動できない(フロッガー的な挙動)
                                     {
-                                        if (this.transform.localPosition.y <= -220f && sign < 0) break;
-
-                                        float? nextY = MANAGE.VerticalStopPoint.GetNextTargetY(transform.localPosition.y, sign);
-                                        if (nextY != null)
+										if (flags[1] == 0 && sign != 0) // 止まっている時に、かつ上下どちらかの入力があるとき
                                         {
-                                            positions[1] = new Vector3(0, nextY.Value, 0);
-                                            flags[0] = sign;
-                                            flags[1] = 1;
+											if (this.transform.localPosition.y <= -220f && sign < 0) break;	// 真下移動を制限
+
+											float? nextY = MANAGE.VerticalStopPoint.GetNextTargetY(transform.localPosition.y, sign);
+											if (nextY != null)	// VerticalStopPointから移動先を拾ってきて、存在した場合に移動
+											{
+												positions[1] = new Vector3(0, nextY.Value, 0);
+												flags[0] = sign;
+												flags[1] = 1;
+											}
+										}
+										if (flags[1] == 1)
+										{
+											float now_speed = 8.0f * flags[0];
+											Vector3 nextPos = transform.localPosition + new Vector3(0, now_speed, 0);
+
+											if ((flags[0] > 0 && nextPos.y >= positions[1].y) ||
+												(flags[0] < 0 && nextPos.y <= positions[1].y))
+											{
+												this.transform.localPosition = new Vector3(0, positions[1].y, 0);
+												flags[1] = 0;
+												positions[0].x = 1;	// 移動できなくする(押し直ししないと動けなくする)
+												SoundManager.Instance.PlaySE(0);
+											}
+											else
+											{
+												this.transform.localPosition = nextPos;
+											}
                                         }
-                                    }
-                                    if (flags[1] == 1)
-                                    {
-                                        float speed = 8.0f * flags[0];
-                                        Vector3 nextPos = transform.localPosition + new Vector3(0, speed, 0);
+									}
+									break;
 
-                                        if ((flags[0] > 0 && nextPos.y >= positions[1].y) ||
-                                            (flags[0] < 0 && nextPos.y <= positions[1].y))
-                                        {
-                                            this.transform.localPosition = new Vector3(0, positions[1].y, 0);
-                                            flags[1] = 0;
-                                            SoundManager.Instance.PlaySE(0);
-                                        }
-                                        else
-                                        {
-                                            this.transform.localPosition = nextPos;
-                                        }
-                                    }
-                                    break;
+								case ObjectManager.MovementMode.FreeRun:	// 仕切りナシ・どこでも止まれる
+									{
+										if (sign != 0)
+										{
+											this.transform.localPosition += new Vector3(0, 5.0f * sign, 0);
+										}
+									}
+									break;
 
-                                case ObjectManager.MovementMode.FreeRun:
-                                    if (sign != 0)
-                                    {
-                                        this.transform.localPosition += new Vector3(0, 5.0f * sign, 0);
-                                    }
-                                    break;
-                            }
+							}
 
-                            // 自機専用のリミッタガード
-                            float finalY = this.transform.localPosition.y;
-                            if (finalY <= -220f)
-                            {
-                                this.transform.localPosition = new Vector3(0, -220f, 0);
-                                flags[0] = 0;
-                                flags[1] = 0;
-                            }
-                            break;
-                    }
+							// 自機専用のリミッタガード
+							float finalY = this.transform.localPosition.y;
+							if (finalY <= -220f)
+							{
+								this.transform.localPosition = new Vector3(0, -220f, 0);
+								flags[0] = 0;
+								flags[1] = 0;
+							}
+							break;
+					}
 
-                    // 自機だけの座標報告
-                    MANAGE.pos_myship = this.transform.localPosition;
-                    DebugStation.SetText($"\n\n<color=LIMEGREEN>自機確定: pos={this.transform.localPosition} / Mode={currentMode}</color>", false);
-                }
+					// 自機だけの座標報告
+					MANAGE.pos_myship = this.transform.localPosition;
+					DebugStation.SetText($"\n\n<color=LIMEGREEN>自機確定: pos={this.transform.localPosition} / Mode={currentMode}</color>", false);
+					DebugStation.SetText($"\n\nFroggerSnap:flags[0]={flags[0]} / flags[1]={flags[1]} / positions[0].x={positions[0].x}", false);
+				} 
                 break; // ★自機ケースの完全な終了
 
             // ==========================================
@@ -376,7 +419,7 @@ void Start()
                         MainHit.enabled = true;
                         this.transform.localScale = new Vector3(0.15f, 0.15f, 1);
                         NOHIT = false;
-                        positions[0] = new Vector3(speed * 0.75f, 0, 0);
+                        positions[0] = new Vector3(speed * 0.25f, 0, 0);
 
                         switch (local_mode)
                         {
