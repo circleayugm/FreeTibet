@@ -306,6 +306,7 @@ MonoBehaviour:
   MSG_DEBUG: {fileID: 0}
   MYSHIP: {fileID: 9135990158641705923}
   MANAGE: {fileID: 28917158}
+  TOUCH: {fileID: 28917159}
   cnt_interval: 60
   cnt_score: 0
   count: -1
@@ -332,6 +333,8 @@ MonoBehaviour:
   SPR_MYSHOT: []
   PREFAB_OBJECT: {fileID: 2981819599623524463, guid: 8e96cab1e45a07943b686bf04fe93c1f, type: 3}
   SW_BOOT: 0
+  LIST_OPTION: []
+  OPTION_POSITIONS: []
   objectStock: []
   objectUsed: []
   objectStockMax: 0
@@ -2867,7 +2870,7 @@ MonoBehaviour:
     m_HorizontalOverflow: 0
     m_VerticalOverflow: 0
     m_LineSpacing: 1
-  m_Text: "Press [\u2191] to Start"
+  m_Text: "Touch or Press [\u2193]"
 --- !u!222 &26418057615951725
 CanvasRenderer:
   m_ObjectHideFlags: 0

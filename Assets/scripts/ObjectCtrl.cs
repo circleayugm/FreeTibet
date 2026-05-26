@@ -121,6 +121,7 @@ public class ObjectCtrl : MonoBehaviour
 
 	MainSceneCtrl MAIN;
 	ObjectManager MANAGE;
+	TouchPanelCtrl TOUCH;
 
 
 
@@ -128,6 +129,7 @@ public class ObjectCtrl : MonoBehaviour
 	{
 		MAIN = GameObject.Find("root_game").GetComponent<MainSceneCtrl>();
 		MANAGE = GameObject.Find("root_game").GetComponent<ObjectManager>();
+		TOUCH = GameObject.Find("root_game").GetComponent<TouchPanelCtrl>();
 	}
 
 
@@ -278,7 +280,8 @@ public class ObjectCtrl : MonoBehaviour
 										fadeStep = 0;
 										MainPic.color = new Color(1, 1, 1, 1);
 										this.transform.localPosition = new Vector3(0, -220, 0);
-										flags[3] = 0;   // ゴールフラグリセット
+										MANAGE.AddOption();   // ゴールしたら分身を1体追加
+                                        flags[3] = 0;   // ゴールフラグリセット
 									}
 									flags[0] = 0;
 									flags[1] = 0;
@@ -292,7 +295,29 @@ public class ObjectCtrl : MonoBehaviour
 							if (Input.GetKeyDown(KeyCode.Alpha2)) currentMode = ObjectManager.MovementMode.FroggerSnap;
 							if (Input.GetKeyDown(KeyCode.Alpha3)) currentMode = ObjectManager.MovementMode.FreeRun;
 
-							float input = Input.GetAxisRaw("Vertical");
+							// デバッグ用；自機の分身を増やす
+							{
+								if (Input.GetKeyDown(KeyCode.Z))
+                                {
+                                    MANAGE.AddOption();
+                                }
+							}
+							Vector3 diff = Vector3.zero;
+							if (TOUCH.on0 == true)
+							{
+								// タッチ位置と自機位置の差分を取る
+								diff = TOUCH.pos0 - this.transform.localPosition;
+							}
+
+                            // -1, 0, +1 に丸める（Mathf.Signを使うか、一定の閾値を超えたら1にする）
+                            //int moveX = (diff.x > 50) ? 1 : (diff.x < -50) ? -1 : 0;
+                            int moveY = (diff.y > 20) ? 1 : (diff.y < -20) ? -1 : 0;	// 丸める
+							float input = (float)moveY;
+
+							if (moveY == 0) // タッチ入力がないときはコントローラー入力を受け付ける
+                            {
+								input = Input.GetAxisRaw("Vertical");
+							}
 							int sign = (input > 0.4f) ? 1 : (input < -0.4f) ? -1 : 0;   // 入力から進行方向を作成
 							if (Mathf.Abs(sign) == 0) positions[0].x = 0;	// 入力がないときはsign=0にして、FroggerSnapモードの移動完了後の入力待ち状態を作るためのフラグもリセット
                             if (positions[0].x >= 0.1f) sign = 0;			// FroggerSnapモードで移動完了後、次の入力があるまで動けないようにするフラグをチェックして、必要なら入力を無効化
@@ -393,15 +418,102 @@ public class ObjectCtrl : MonoBehaviour
 
 					// 自機だけの座標報告
 					MANAGE.pos_myship = this.transform.localPosition;
-					DebugStation.SetText($"\n\n<color=LIMEGREEN>自機確定: pos={this.transform.localPosition} / Mode={currentMode}</color>", false);
+					DebugStation.SetText($"\n\n<color=LIMEGREEN>自機確定: pos={this.transform.localPosition} / Mode={currentMode}</color>", true);
 					DebugStation.SetText($"\n\nFroggerSnap:flags[0]={flags[0]} / flags[1]={flags[1]} / positions[0].x={positions[0].x}", false);
 				} 
                 break; // ★自機ケースの完全な終了
 
             // ==========================================
-            // 敵（TANK）の処理
+            // 分身の処理
             // ==========================================
-            case ObjectManager.TYPE.TANK:
+            case ObjectManager.TYPE.MY_OPTION:
+				{
+					switch (count)
+					{
+						case 0: // --- 初期化 ---
+							obj_mode = ObjectManager.MODE.HIT;
+							NOHIT = false;
+							MainHit.offset = new Vector2(0, -350);
+							MainHit.size = new Vector3(300, 30, 1);
+							MainHit.enabled = true;
+							MainPic.sprite = MANAGE.SPR_MYSHIP[0];  // 分身のモードによって姿を変える
+							MainPic.enabled = true;
+							MainPic.color = new Color(1, 1, 1, 1);
+											// スピードに「列からn番目か」を保持しておく
+							angle = 0;
+							flags[0] = -1;	// 死亡タイマー(やられるまでは-1・やられた時に0以上でタイマーを兼ねる)
+							flags[1] = 0;
+							flags[2] = 0;
+							flags[3] = 0;
+							local_mode = 0;
+							power = 1;
+							LIFE = 1;
+							this.transform.localPosition = new Vector3(0, -220, 0);
+							this.transform.localScale = new Vector3(0.15f, 0.15f, 1);
+							break;
+						default:
+							{
+								if (flags[0] >= 0)
+								{       // 分身がやられた場合；タイマーがなくなった時に消滅
+                                    flags[0]++;
+                                    if (flags[0] >= 60)
+                                    {
+                                        MANAGE.Return(this);
+                                    }
+                                    else
+                                    {
+                                        MainPic.enabled = (flags[0] % 4 < 2);   // 4フレームごとに点滅
+                                    }
+                                    return; // やられた分身は移動しない
+
+                                }
+                                else
+                                {       // 分身が生きている場合；基本的には自機の軌跡を辿って移動
+
+                                    // 自分の参照したいインデックス（speed）を計算
+                                    // 例：1番目の分身なら speed = 10（10フレーム前）、2番目なら 20... と調整する
+                                    int targetIndex = (int)speed;
+
+                                    // 【重要】履歴リストが自分の指定するインデックスまで「十分に溜まっているか」をチェック
+                                    if (MANAGE.OPTION_POSITIONS.Count > targetIndex)
+                                    {
+                                        // 溜まっていれば、その過去の座標を貰ってそこに居座る
+                                        this.transform.localPosition = MANAGE.OPTION_POSITIONS[targetIndex];
+                                    }
+                                    else
+                                    {
+                                        // ゲーム開始直後など、まだ履歴が足りない時間は、安全のために今の自機と同じ位置に置いておく
+                                        this.transform.localPosition = MANAGE.pos_myship;
+                                    }
+                                }
+                            }
+							break;
+					}
+				}
+				break;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+                        // ==========================================
+                        // 敵（TANK）の処理
+                        // ==========================================
+                        case ObjectManager.TYPE.TANK:
                 {
                     // ゲームオーバー演出中の Early Return 代わり
                     if (MAIN.cnt_game_over >= 0 && MAIN.cnt_game_over < 40)

@@ -24,7 +24,9 @@ public class MainSceneCtrl : MonoBehaviour
     [SerializeField]
     ObjectCtrl MYSHIP;  // 外部参照可能：自機のオブジェクトコントローラー
     [SerializeField]
-    ObjectManager MANAGE;
+    ObjectManager MANAGE;   // オブジェクトマネージャーのハンドル
+    [SerializeField]
+    TouchPanelCtrl TOUCH;   // タッチパネル情報のハンドル
     //-------------------------------------------------定数
     const uint CNT_GAME_CLEAR = 1411000000;  // スコアがこれを越えたらエンディング
     const uint CNT_INTERVAL_MAXIMUM = 60;
@@ -43,7 +45,8 @@ public class MainSceneCtrl : MonoBehaviour
     public int cnt_game_over = -1;  // 外部参照可能：0以上でゲームオーバー処理
 
     // ゲームオーバー演出が始まったとき、またはデモ画面に遷移した瞬間
-    bool isWaitingForKeyRelease = true;
+    bool isWaitingForKeyRelease = true;     // キー操作
+    bool isWaitingForTouchRelease = true;   // タッチ操作
 
 
     // Start is called before the first frame update
@@ -122,20 +125,42 @@ public class MainSceneCtrl : MonoBehaviour
                     }
                     // --- デモ画面やタイトル画面での、ゲーム開始入力チェック部分 ---
 
-                    if (isWaitingForKeyRelease)
+                    //if (isWaitingForKeyRelease == true)
                     {
-                        // 上キー（または移動入力）が「完全に0（離された）」になったら、フラグを解除する
+                        // 移動入力が「完全に0（離された）」になったら、フラグを解除する
                         if (Mathf.Abs(Input.GetAxisRaw("Vertical")) < 0.1f)
                         {
                             isWaitingForKeyRelease = false;
                         }
-
+                    }
+                    //if (isWaitingForTouchRelease == true)
+                    { 
+                        // タッチパネル離されたらフラグ解除
+                        if(TOUCH.on0 == false)
+                        {
+                            isWaitingForTouchRelease = false;
+                        }
                         // キーが離されるまでは、この下の「ゲーム開始判定」を完全に無視（スルー）する！
                     }
+                    DebugStation.SetText($"\nisWaitingForKeyRelease: {isWaitingForKeyRelease}\nisWaitingForTouchRelease: {isWaitingForTouchRelease} / TOUCH.on0={TOUCH.on0}\n\n", true);
                     // --- ここから通常のゲーム開始判定 ---
-                    else if (Input.GetAxisRaw("Vertical") > 0.4f) // または GetKeyDown など
+                    bool sw_start = false;  // ゲーム開始のスイッチ
+                    if (isWaitingForKeyRelease == false && isWaitingForTouchRelease == false)   // キー・タッチ両方とも無効
+                    {
+                        if (Input.GetAxisRaw("Vertical") < -0.4f)   // 下が押された(上だとすぐ突っ込んじゃうことに今更気づいた)
+                        {
+                            sw_start = true;
+                        }
+                        if (Input.GetMouseButton(0) == true)                      // タッチパネルが押された
+                        {
+                            sw_start = true;
+                        }
+                    }
+                    if (sw_start==true)
                     {
                         // ここで初めて、新鮮な「カチッ」という入力としてゲームが始まる！
+                        sw_start = false; // スイッチは一度立てたらリセットしておく
+
                         cnt_score = 0;
                         cnt_game_over = -1;
                         cnt_tank_start = 0;
@@ -213,6 +238,7 @@ public class MainSceneCtrl : MonoBehaviour
                             SoundManager.Instance.StopSE();
                             SoundManager.Instance.PlaySE(3);
                             isWaitingForKeyRelease = true;  // ゲームオーバー演出が始まったら、キー入力待ちフラグをセットする（再び「キーが離されるのを待つ」状態にする）
+                            isWaitingForTouchRelease = true;    // タッチ入力待ちフラグもセットする
                         }
                         if (
                                 (cnt_game_over >= 40)   // 「終劇」時間を掛けて縦に拡大
@@ -258,7 +284,7 @@ public class MainSceneCtrl : MonoBehaviour
         //MSG_SCORE.text = cnt_score.ToString();  // 一時的な措置
         count++;
 
-        DebugStation.SetText("cnt_score: " + cnt_score.ToString() + "\ncnt_interval: " + cnt_interval.ToString() + "\ncnt_game_over: " + cnt_game_over.ToString(), false);
+        //DebugStation.SetText("cnt_score: " + cnt_score.ToString() + "\ncnt_interval: " + cnt_interval.ToString() + "\ncnt_game_over: " + cnt_game_over.ToString(), false);
 
     }
 

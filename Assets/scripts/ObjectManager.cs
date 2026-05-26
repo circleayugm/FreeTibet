@@ -44,8 +44,12 @@ public sealed class ObjectManager : MonoBehaviour {
 	[SerializeField]
     public bool SW_BOOT = false;        // 動作準備が整った時true
 
+	public List<ObjectCtrl> LIST_OPTION = new List<ObjectCtrl>();	// 分身のリスト(参照用)
+	public List<Vector3> OPTION_POSITIONS = new List<Vector3>();	// 分身の位置リスト(参照用)
 
-    public static readonly int LIMIT = 100;             // キャラクタ表示総数.
+
+
+    public static readonly int LIMIT = 1000;			// キャラクタ表示総数.
 
 	public enum MODE    // 処理モード.
 	{
@@ -59,12 +63,9 @@ public sealed class ObjectManager : MonoBehaviour {
 	public enum TYPE    // 処理タイプ(当たり判定有無を大雑把に仕分け).
 	{
 		NOUSE = 0,          // 未使用.
-		MYSHIP = 1,			// 自機.
-		//MYSHOT = 2,			// 自機ショット
-		//FLOOR = 3,		    // 床・すべての物体は床に乗る
-		TANK = 4,			// 敵
-		//ITEM,				// アイテム
-		//WALL,				// 壁
+		MYSHIP = 1,         // 自機.
+        MY_OPTION = 2,      // 分身.
+        TANK = 4,			// 敵
 		NOHIT_EFFECT,		// 爆風
 	}
 	public enum MovementMode
@@ -99,15 +100,8 @@ public sealed class ObjectManager : MonoBehaviour {
     }
     void Start()
 	{
-		//Debug.Log("★★★★★ObjectManager:Start");
-		//if (ModeManager.now_mode != ModeManager.MODE.GAME_PLAY)
-		{
-			//return;
-		}
-	}
 
-    // Updateは空にするか消してOK
-    //void Update() { }
+	}
 
     // MainSceneCtrlから呼ばれる初期化
     // --- BootManagerを「完全1回限定」にする ---
@@ -126,8 +120,8 @@ public sealed class ObjectManager : MonoBehaviour {
             // 直接 Instantiate し、基本設定を済ませる
             ObjectCtrl obj = Instantiate(PREFAB_OBJECT, new Vector3(0, -10000, 0), Quaternion.identity);
             obj.transform.SetParent(OBJ_ROOT);
-            obj.OBJcnt = i;
-			obj.MainPic.enabled = false;
+            obj.OBJcnt = i;                 // 生成順を記録しておく（必要に応じて）
+            obj.MainPic.enabled = false;
 			obj.MainPic.sprite = null;
 			obj.scale = new Vector3(0.15f, 0.15f, 1);
             // 最初は全員「お休み」状態
@@ -144,35 +138,47 @@ public sealed class ObjectManager : MonoBehaviour {
         SW_BOOT = true;
         Debug.Log("準備完了フラグを立てました！");
 	}
-#if false
 
-	private void Update()
-	{
-		if (SW_BOOT == true)
-		{
-			return;
-		}
-        objectStock.Clear();
-        objectStockMax = 0;
-        objectUsed.Clear();
-        objectUsedMax = 0;
-        for (int i = 0; i < ang256.Length; i++)
+
+
+    private void Update()
+    {
+        if (SW_BOOT == false) return;
+        if (ModeManager.mode != ModeManager.MODE.GAME) return;
+
+        // 自機の現在位置を履歴の先頭に入れる
+        Vector3 opp = pos_myship;
+        OPTION_POSITIONS.Insert(0, opp);
+
+        // 【重要】履歴が溜まりすぎたら、一番古いお尻のデータを消す！
+        // 最大で「分身の最大数 × 間隔」ぶんだけあれば足りるので、余裕を持って500件などで制限
+        if (OPTION_POSITIONS.Count > 500)
         {
-            ang256[i] = (90 - (360.0f / 256.0f) * i);
+            OPTION_POSITIONS.RemoveAt(OPTION_POSITIONS.Count - 1);
         }
-        //Debug.Log("オブジェクト自薦生成部分");
-        for (int i = 0; i < LIMIT; i++)
-        {
-            ObjectCtrl obj = Generate(TYPE.NOUSE, new Vector3(0, -10000, 0), 0, 0);
-            obj.OBJcnt = i;
-            objectStock.Add(obj);
-            objectStockMax++;
-            //Debug.Log("　→最低限の初期化完了：i=" + i);
-        }
-        SW_BOOT = true;
     }
-#endif
 
+    public void AddOption()
+    {
+		// 1. プール（またはInstantiate）から、分身用のオブジェクトを1体呼び出す
+		// （既存の生成システムに合わせて、タイプを「MY_OPTION」に指定してGetするイメージ）
+		ObjectCtrl newOption = Set((int)TYPE.MY_OPTION, 0, 0, pos_myship, new Vector3(0.15f, 0.15f, 1), 0, LIST_OPTION.Count);
+
+        if (newOption != null)
+        {
+            // 2. この新しい分身の「speed」変数に、自分が列の何番目（何フレーム後ろ）かを覚えさせる
+            // 例：1人目なら 1 * 10 = 10フレーム前、2人目なら 2 * 10 = 20フレーム前
+            // LIST_OPTION.Count は「今いる人数」なので、新入りは自動的に次の番号になります
+            int frameInterval = 10; // 追従の間隔（フレーム数）。お好みで調整
+            newOption.speed = (LIST_OPTION.Count + 1) * frameInterval;
+
+            // 3. マネージャーの管理リストの「最後尾」に、この分身（の住所）を追加する
+            LIST_OPTION.Add(newOption);
+
+            // （オプション）出現した瞬間の座標を、とりあえず今の自機位置にしておく
+            newOption.transform.position = pos_myship;
+        }
+    }
 
 
     /// <summary>
@@ -183,8 +189,6 @@ public sealed class ObjectManager : MonoBehaviour {
     /// <param name="angle">角度</param>
     /// <param name="speed">速度</param>
     /// <returns>前準備と設置が終わったオブジェクト</returns>
-#if false
-
     public ObjectCtrl Generate(TYPE type, Vector3 pos, int angle, int speed)
 	{
 		ObjectCtrl obj = new ObjectCtrl();
@@ -201,21 +205,20 @@ public sealed class ObjectManager : MonoBehaviour {
 		Debug.Log($"ObjectManager.Generate:オブジェクト生成:総数={objectStock.Count}");
         return obj;
 	}
-#endif
 
 
-	/// <summary>
-	///		敵の出現初期化
-	/// </summary>
-	/// <param name="type"></param>
-	/// <param name="group_id"></param>
-	/// <param name="local_mode"></param>
-	/// <param name="pos"></param>
-	/// <param name="scale"></param>
-	/// <param name="angle"></param>
-	/// <param name="speed"></param>
-	/// <returns></returns>
-	public ObjectCtrl Set(int type, int group_id,int local_mode,Vector3 pos, Vector3 scale,int angle, int speed)
+    /// <summary>
+    ///		敵の出現初期化
+    /// </summary>
+    /// <param name="type"></param>
+    /// <param name="group_id"></param>
+    /// <param name="local_mode"></param>
+    /// <param name="pos"></param>
+    /// <param name="scale"></param>
+    /// <param name="angle"></param>
+    /// <param name="speed"></param>
+    /// <returns></returns>
+    public ObjectCtrl Set(int type, int group_id,int local_mode,Vector3 pos, Vector3 scale,int angle, int speed)
 	{
 		if (objectStock.Count == 0)
 		{

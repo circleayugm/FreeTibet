@@ -126,7 +126,7 @@ public sealed class TouchPanelCtrl : MonoBehaviour {
 #if UNITY_EDITOR
 		p = Input.mousePosition;    // タッチ位置取得.
 		on0 = Input.GetMouseButton(0);
-#elif UNITY_STANDALONE_WIN
+#elif UNITY_STANDALONE_WIN || UNITY_WEBGL
 		p = Input.mousePosition;    // タッチ位置取得.
 		on0 = Input.GetMouseButton(0);
 #elif UNITY_IPHONE || UNITY_ANDROID
