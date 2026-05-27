@@ -438,55 +438,84 @@ public class ObjectCtrl : MonoBehaviour
 							MainHit.enabled = true;
 							MainPic.sprite = MANAGE.SPR_MYSHIP[0];  // 分身のモードによって姿を変える
 							MainPic.enabled = true;
-							MainPic.color = new Color(1, 1, 1, 1);
+							MainPic.color = new Color(1, 1, 1, 0.5f);
 											// スピードに「列からn番目か」を保持しておく
 							angle = 0;
 							flags[0] = -1;	// 死亡タイマー(やられるまでは-1・やられた時に0以上でタイマーを兼ねる)
 							flags[1] = 0;
 							flags[2] = 0;
-							flags[3] = 0;
+							flags[3] = -1;	// ゴールカウンター；ゴール処理中0以上・スタートに戻った場合-1
 							local_mode = 0;
 							power = 1;
 							LIFE = 1;
 							this.transform.localPosition = new Vector3(0, -220, 0);
-							this.transform.localScale = new Vector3(0.15f, 0.15f, 1);
+							this.transform.localScale = new Vector3(0.13f, 0.13f, 1);
 							break;
 						default:
 							{
 								if (flags[0] >= 0)
 								{       // 分身がやられた場合；タイマーがなくなった時に消滅
-                                    flags[0]++;
-                                    if (flags[0] >= 60)
-                                    {
-                                        MANAGE.Return(this);
-                                    }
-                                    else
-                                    {
-                                        MainPic.enabled = (flags[0] % 4 < 2);   // 4フレームごとに点滅
-                                    }
-                                    return; // やられた分身は移動しない
+									flags[0]++;
+									if (flags[0] >= 60)
+									{
+										MANAGE.Return(this);
+									}
+									else
+									{
+										MainPic.enabled = (flags[0] % 4 < 2);   // 4フレームごとに点滅
+									}
+									return; // やられた分身は移動しない
 
-                                }
-                                else
-                                {       // 分身が生きている場合；基本的には自機の軌跡を辿って移動
+								}
+								else
+								{   // 分身が生きている場合；基本的には自機の軌跡を辿って移動
 
-                                    // 自分の参照したいインデックス（speed）を計算
-                                    // 例：1番目の分身なら speed = 10（10フレーム前）、2番目なら 20... と調整する
-                                    int targetIndex = (int)speed;
+									// 自分の参照したいインデックス（speed）を計算
+									// 例：1番目の分身なら speed = 10（10フレーム前）、2番目なら 20... と調整する
+									int targetIndex = (int)speed;
 
-                                    // 【重要】履歴リストが自分の指定するインデックスまで「十分に溜まっているか」をチェック
-                                    if (MANAGE.OPTION_POSITIONS.Count > targetIndex)
-                                    {
-                                        // 溜まっていれば、その過去の座標を貰ってそこに居座る
-                                        this.transform.localPosition = MANAGE.OPTION_POSITIONS[targetIndex];
+									// 【重要】履歴リストが自分の指定するインデックスまで「十分に溜まっているか」をチェック
+									if (MANAGE.OPTION_POSITIONS.Count > targetIndex)
+									{
+										// 溜まっていれば、その過去の座標を貰ってそこに居座る
+										this.transform.localPosition = MANAGE.OPTION_POSITIONS[targetIndex];
+									}
+									else
+									{
+										// ゲーム開始直後など、まだ履歴が足りない時間は、安全のために今の自機と同じ位置に置いておく
+										this.transform.localPosition = MANAGE.pos_myship;
+									}
+
+									// ゴール到達チェック；自機と同じ条件でチェック後、基準カウンターと比較してスコア加算
+									if (this.transform.localPosition.y >= 100)  // 分身もゴールに到達しているか
+									{
+										if (count > 30)	// オブジェクトが生きているかをグランドカウンターから確認
+										{
+											if (flags[3] == -1)	// ゴール処理カウンターが動いていなかった場合
+											{
+												flags[1]++;			// 分身のゴール到達回数をカウント
+												MAIN.cnt_score++;   // 分身がゴールしたらスコア加算
+                                                flags[3]++;			// ゴール処理中フラグを立てる
+                                            }
+                                        }
                                     }
-                                    else
-                                    {
-                                        // ゲーム開始直後など、まだ履歴が足りない時間は、安全のために今の自機と同じ位置に置いておく
-                                        this.transform.localPosition = MANAGE.pos_myship;
+									else
+									{
+                                        flags[3] = -1;   // ゴール処理フラグリセット
                                     }
-                                }
-                            }
+                                    // 基準カウンターに変化がない場合は、ゴール処理中かどうかをチェックして、必要ならゴール処理を完了させる
+                                    if (flags[3] >= 0)
+									{
+										flags[3]++; // ゴール処理中カウンターを進める
+                                                    // ゴール処理中で、かつ自機がスタート地点に戻っている場合は、ゴール処理をリセットする
+                                        //if (this.transform.localPosition.y < 0)
+										{
+											//flags[1] = 0;    // 分身のゴールカウンターリセット
+											//flags[2] = 0;    // 基準カウンター2もリセット
+										}
+									}
+								}
+							}
 							break;
 					}
 				}
